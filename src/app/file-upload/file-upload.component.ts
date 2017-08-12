@@ -1,6 +1,7 @@
 import {Component, Input, Output, EventEmitter, ViewChild, ElementRef, OnInit} from "@angular/core";
 
 import {Subject} from "rxjs/Subject";
+import {FileUploadModel} from "./file-upload.model";
 
 @Component({
     selector: "file-upload",
@@ -15,7 +16,7 @@ export class FileUploadComponent implements OnInit {
     @Input() public maxFileSize: number;
     @Input() public showUploadBox: boolean;
 
-    @Output() public beginUploadFiles: EventEmitter<any> = new EventEmitter<any>();
+    @Output() public beginUploadFiles: EventEmitter<FileUploadModel> = new EventEmitter<FileUploadModel>();
 
     @Output() public acceptedFilesSelected: EventEmitter<Array<File>>;
     @Output() public progressEvent: EventEmitter<number>;
@@ -48,7 +49,7 @@ export class FileUploadComponent implements OnInit {
     public progressSubject: Subject<number>;
     public readyStateSubject: Subject<XMLHttpRequest>;
 
-    constructor() {
+    ngOnInit() {
         this.acceptedFilesSelected = new EventEmitter<Array<File>>();
         this.progressEvent = new EventEmitter<number>();
         this.responseEvent = new EventEmitter<XMLHttpRequest>();
@@ -68,10 +69,6 @@ export class FileUploadComponent implements OnInit {
         this.readyStateSubject.subscribe((xhr: XMLHttpRequest) => {
             this.MonitorResponse(xhr);
         });
-    }
-
-    ngOnInit() {
-        // console.log("upload", this.uploadUri);
     }
 
     //#region Validation
@@ -236,13 +233,13 @@ export class FileUploadComponent implements OnInit {
         this.uploadInProgress = true;
 
         // Upload the accepted files
-        const uploadData = {
-            UploadUri: this.uploadUri,
-            UploadHeaders: this.uploadHeaders,
-            UploadMethodType: this.uploadMethodType,
-            AcceptedFiles: acceptedFiles,
-            ProgressSubject: this.progressSubject,
-            ReadyStateSubject: this.readyStateSubject
+        const uploadData: FileUploadModel = {
+            uploadUri: this.uploadUri,
+            headers: this.uploadHeaders,
+            methodType: this.uploadMethodType,
+            files: acceptedFiles,
+            progress: this.progressSubject,
+            readyState: this.readyStateSubject
         };
 
         console.log(uploadData);

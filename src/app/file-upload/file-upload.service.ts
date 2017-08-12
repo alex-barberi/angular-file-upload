@@ -4,30 +4,22 @@
  */
 
 import {Injectable} from "@angular/core";
-import {Subject} from "rxjs/Subject";
+import {FileUploadModel} from "./file-upload.model";
 
 @Injectable()
 export class FileUploadService {
     private _receivedFirstResponse: boolean;
 
-    constructor() {}
-
     /**
-     * Upload files to a server.
-     * @param {string} uploadUri: The URI of the server.
-     * @param {string} methodType: ex. POST or PUT.
-     * @param {Map<string, string>} headers: Any headers you may need to include. Ex. Authorization header for basic auth.
-     * @param {Array<File>} files: The files to upload.
-     * @param {Subject<number>} progress: Use an RxJS subject to monitor file upload progress.
-     * @param {Subject<XMLHttpRequest>} readyState: Use readyState to find out when files have been uploaded.
+     * Upload files to server.
+     * @param {FileUploadModel} uploadData
      */
-    public uploadFiles(uploadUri: string, methodType: string, headers: Map<string, string>,
-                       files: Array<File>, progress: Subject<number>, readyState: Subject<XMLHttpRequest>) {
+    public uploadFiles(uploadData: FileUploadModel) {
         const xhr = new XMLHttpRequest();
         const formData = new FormData();
 
-        for (let i = 0; i < files.length; i++) {
-            formData.append(files[i].name, files[i], files[i].name);
+        for (let i = 0; i < uploadData.files.length; i++) {
+            formData.append(uploadData.files[i].name, uploadData.files[i], uploadData.files[i].name);
         }
 
         this._receivedFirstResponse = false;
@@ -35,12 +27,12 @@ export class FileUploadService {
         xhr.upload.addEventListener("progress", (event: ProgressEvent) => {
             if (event.lengthComputable) {
                 const prog = Math.round((event.loaded * 100) / event.total);
-                progress.next(prog);
+                uploadData.progress.next(prog);
             }
         }, false);
 
         xhr.onreadystatechange = () => {
-            readyState.next(xhr);
+            uploadData.readyState.next(xhr);
 
             // NO RESPONSE YET? IT LIES TO GIVE US RETURN. WHAT ARE THOSE?
             if (xhr.response && !this._receivedFirstResponse) {
@@ -51,10 +43,10 @@ export class FileUploadService {
         };
 
         // methodType POST or PUT?
-        xhr.open(methodType, uploadUri, true);
+        xhr.open(uploadData.methodType, uploadData.uploadUri, true);
 
         // headers - must set after opening
-        headers.forEach((value, key) => {
+        uploadData.headers.forEach((value, key) => {
             xhr.setRequestHeader(key, value);
         });
 
