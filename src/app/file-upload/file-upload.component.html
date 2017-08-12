@@ -1,0 +1,36 @@
+<!--
+For drag and drop information, please reference:
+https://developer.mozilla.org/en-US/docs/Web/API/HTML_Drag_and_Drop_API
+-->
+
+<div class="file-upload">
+    <div *ngIf="warnings && warnings.length > 0" class="alert alert-danger">
+        <ul style="padding-top: 0; margin-top: 0;">
+            <li *ngFor="let warn of warnings">
+                {{warn.message}}
+                <div *ngIf="warn.unacceptedFiles && warn.unacceptedFiles.length > 0">
+                    <ul style="padding-top: 0; margin-top: 0; padding-left: 15px;">
+                        <li style="list-style-type: circle;" *ngFor="let file of warn.unacceptedFiles">{{file.name}}</li>
+                    </ul>
+                </div>
+            </li>
+        </ul>
+    </div>
+
+    <div *ngIf="!uploadInProgress" (dragenter)="DragEnter($event)" (dragover)="DragOver($event)" (dragleave)="DragLeave($event)" (drop)="Drop($event)">
+        <div *ngIf="showUploadBox" [class]="highlight ? 'upload-box highlight' : 'upload-box'">
+            <div class="icon-container">
+                <div class="upload-icon"><img src="images/cloud-upload-2.svg" class="upload-icon-svg" /></div>
+                <div class="upload-drag-text">{{allowMultiple ? 'Drag File(s) to Upload' : 'Drag File to Upload'}}</div>
+            </div>
+        </div>
+
+        <div class="file-selector">
+            <input type="file" style="display: none;" #filePicker (change)="OnFileSelect($event)" [multiple]="allowMultiple" />
+
+            <button class="btn btn-upload" (click)="OpenFilePicker()">
+                {{allowMultiple ? 'Choose File(s)' : 'Choose File'}}
+            </button>
+        </div>
+    </div>
+</div>
