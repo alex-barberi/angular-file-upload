@@ -1,68 +1,56 @@
-/*
- * Please see "Using files from web applications":
- * https://developer.mozilla.org/en-US/docs/Using_files_from_web_applications
- */
-
 import {Injectable} from "@angular/core";
-import {FileUploadModel} from "./file-upload.model";
+import {Subject} from "rxjs/Subject";
 
 @Injectable()
 export class FileUploadService {
-    private _receivedFirstResponse: boolean;
-
     /**
-     * Upload files to server.
-     * @param {FileUploadModel} uploadData
+     * Upload a file to a server.
+     * @param {string} uploadRoute: The REST API URI.
+     * @param {Map<string, string>} headers: Any headers that need to be submitted to the REST API.
+     * @param {string} methodType: POST or PUT
+     * @param {Array<File>} files: The file(s) to upload.
+     * @param {Subject<number>} progress: Used to monitor the upload progress.
+     * @param {Subject<XMLHttpRequest>} readyState: Used to monitor when the upload is complete.
      */
-    public uploadFiles(uploadData: FileUploadModel) {
+    public uploadFiles(uploadRoute: string, headers: Map<string, string>, methodType: string, files: Array<File>,
+                       progress: Subject<number>, readyState: Subject<XMLHttpRequest>) {
         const xhr = new XMLHttpRequest();
         const formData = new FormData();
 
-        for (let i = 0; i < uploadData.files.length; i++) {
-            formData.append(uploadData.files[i].name, uploadData.files[i], uploadData.files[i].name);
+        // Add all of the files to a form.
+        for (let i = 0; i < files.length; i++) {
+            formData.append(files[i].name, files[i], files[i].name);
         }
 
-        this._receivedFirstResponse = false;
-
+        // Setup a progress event listener
         xhr.upload.addEventListener("progress", (event: ProgressEvent) => {
             if (event.lengthComputable) {
                 const prog = Math.round((event.loaded * 100) / event.total);
-                uploadData.progress.next(prog);
+                progress.next(prog);
             }
         }, false);
 
+        // Listen to ready state to know when the files are uploaded
         xhr.onreadystatechange = () => {
-            uploadData.readyState.next(xhr);
-
-            // NO RESPONSE YET? IT LIES TO GIVE US RETURN. WHAT ARE THOSE?
-            if (xhr.response && !this._receivedFirstResponse) {
-                this._receivedFirstResponse = true;
-
-                // Upload is completed now.
-            }
+            readyState.next(xhr);
         };
 
-        // methodType POST or PUT?
-        xhr.open(uploadData.methodType, uploadData.uploadUri, true);
+        // Open a connection to the API
+        xhr.open(methodType, uploadRoute, true);
 
-        // headers - must set after opening
-        uploadData.headers.forEach((value, key) => {
+        // Add headers - must set headers after opening the connection
+        headers.forEach((value, key) => {
             xhr.setRequestHeader(key, value);
         });
 
+        // Send the form with the files
         xhr.send(formData);
     }
 
-    /**
-     * Convert size to closest Byte size (ie. KB, MB, etc.)
-     * @param bytes: The amount of bytes
-     * @returns {any}
-     */
-    public formatSize(bytes: number) {
+    public formatSize(bytes) {
         if (bytes == 0) {
             return "0 B";
         }
-
         const k = 1000,
               dm = 3,
               sizes = ["B", "KB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB"],

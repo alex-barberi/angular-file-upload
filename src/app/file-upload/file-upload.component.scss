@@ -29,43 +29,24 @@
     text-overflow: $text-over;
 }
 
-.upload-box {
+.drag-drop-location {
     padding: 10px;
     border: dashed 2px rgb(221,221,221);
     background-color: rgb(250,250,250);
     height: 200px;
     width: 360px;
     position: relative;
-    font: normal normal 0.9em/1.8em Arial, Helvetica, sans-serif;
+}
 
-    &.highlight {
-        opacity: 0.5;
-    }
-
-    & .icon-container {
-        margin: 25px auto;
-        width: 145px;
-
-        & .upload-icon {
-            margin-left: 20px;
-        }
-
-        & .upload-drag-text {
-            text-align: center;
-        }
-
-        & .upload-icon-svg {
-            width: 100px;
-            height: 100px;
-        }
-    }
+.highlight {
+    opacity: 0.5;
 }
 
 .file-selector {
     width: 320px;
 }
 
-.btn-upload {
+.btn-file-upload {
     display: inline-block;
     padding: 0 1em;
     border: 1px solid rgba(211,211,211,1);
@@ -98,13 +79,4 @@
         @include box-shadow(0 0 1px 1px rgba(255,255,255,0.8) inset, 0 1px 0 0 rgba(0,0,0,0.298039) inset);
         @include transition(none);
     }
-}
-
-.alert-danger {
-    background-color: rgba(217,83,79,0.75);
-    font: normal normal 0.9em/1.8em Arial, Helvetica, sans-serif;
-    color: white;
-    width: 360px;
-    padding: 15px;
-    @include border-radius(3px);
 }

@@ -1,27 +1,25 @@
 import {Component, Input, Output, EventEmitter, ViewChild, ElementRef, OnInit} from "@angular/core";
-
+import {DomSanitizer} from "@angular/platform-browser";
 import {Subject} from "rxjs/Subject";
 import {FileUploadModel} from "./file-upload.model";
 
 @Component({
-    selector: "file-upload",
+    selector: "bci-file-upload",
     templateUrl: "./file-upload.component.html",
     styleUrls: ["./file-upload.component.scss"]
 })
 export class FileUploadComponent implements OnInit {
-    @Input() public uploadUri: string;
-    @Input() public uploadHeaders: Map<string, string>;
-    @Input() public uploadMethodType: string;
     @Input() public allowMultiple: boolean;
     @Input() public maxFileSize: number;
-    @Input() public showUploadBox: boolean;
+    @Input() public showDragDropBox: boolean;
+    @Input() public disabled: boolean;
+
+    @Input() public btnCssClass: string;
+    @Input() public uploadBoxCssClass: string;
+    @Input() public uploadGuidanceHtml: string;
+    @Input() public btnFileSelectorHtml: string;
 
     @Output() public beginUploadFiles: EventEmitter<FileUploadModel> = new EventEmitter<FileUploadModel>();
-
-    @Output() public acceptedFilesSelected: EventEmitter<Array<File>>;
-    @Output() public progressEvent: EventEmitter<number>;
-    @Output() public responseEvent: EventEmitter<XMLHttpRequest>;
-    @Output() public uploadResponseEvent: EventEmitter<any>;
 
     @ViewChild("filePicker") filePicker: ElementRef;
 
@@ -40,43 +38,47 @@ export class FileUploadComponent implements OnInit {
         { ext: "pptx", mime: "application/vnd.openxmlformats-officedocument.presentationml.presentation" }
     ];
 
-    public uploadingFiles: Array<File>;
-    public uploadInProgress: boolean;
-
     public highlight: boolean;
-    public warnings = [];
+    public warnings: Array<any>;
 
-    public progressSubject: Subject<number>;
-    public readyStateSubject: Subject<XMLHttpRequest>;
+    private progressSubject: Subject<number>;
+    private readyStateSubject: Subject<XMLHttpRequest>;
 
-    ngOnInit() {
-        this.acceptedFilesSelected = new EventEmitter<Array<File>>();
-        this.progressEvent = new EventEmitter<number>();
-        this.responseEvent = new EventEmitter<XMLHttpRequest>();
-        this.uploadResponseEvent = new EventEmitter<any>();
-
-        this.uploadInProgress = false;
+    constructor(
+        public sanitizer: DomSanitizer
+    ) {
         this.highlight = false;
         this.warnings = [];
 
         this.progressSubject = new Subject<number>();
         this.readyStateSubject = new Subject<XMLHttpRequest>();
+    }
 
-        this.progressSubject.subscribe((progress: number) => {
-            this.MonitorProgress(progress);
-        });
+    ngOnInit() {
+        if (!this.btnCssClass) {
+            this.btnCssClass = "btn-file-upload";
+        }
 
-        this.readyStateSubject.subscribe((xhr: XMLHttpRequest) => {
-            this.MonitorResponse(xhr);
-        });
+        if (!this.uploadBoxCssClass) {
+            this.uploadBoxCssClass = "drag-drop-location";
+        }
+
+        if (!this.btnFileSelectorHtml) {
+            if (this.allowMultiple) {
+                this.btnFileSelectorHtml = "Choose File(s)";
+            }
+            else {
+                this.btnFileSelectorHtml = "Choose File";
+            }
+        }
     }
 
     //#region Validation
-    private ValidateFile(file: File) {
+    public ValidateFile(file: File) {
         return (this.ValidateFileExtension(file.name) && this.ValidateFileSize(file));
     }
 
-    private ValidateFileExtension(fileName: string): boolean {
+    public ValidateFileExtension(fileName: string): boolean {
         // Get the file extension
         const fileExtension = this.GetFileExtension(fileName);
 
@@ -96,7 +98,7 @@ export class FileUploadComponent implements OnInit {
         return fileExtensionIndex > -1;
     }
 
-    private GetFileExtension(fileName: string): string {
+    public GetFileExtension(fileName: string): string {
         // Split file name by dot so we can get the extension at the end
         const fileNameSplit = fileName.split(".");
 
@@ -112,7 +114,7 @@ export class FileUploadComponent implements OnInit {
         return fileNameSplit[fileNameSplit.length - 1];
     }
 
-    private ValidateFileSize(file: File) {
+    public ValidateFileSize(file: File) {
         if (file.size > this.maxFileSize) {
             this.warnings.push({ message: "File exceeds size limit", unacceptedFiles: [file] });
             return false;
@@ -122,7 +124,7 @@ export class FileUploadComponent implements OnInit {
         }
     }
 
-    private CreateObjectUrl(file: File): string {
+    public CreateObjectUrl(file: File): string {
         if (!file || file.size <= 0) {
             return "";
         }
@@ -133,32 +135,32 @@ export class FileUploadComponent implements OnInit {
     //#endregion Validation
 
     //#region Drag and Drop
-    private DragOver(event) {
+    public DragOver(event) {
         event.stopPropagation();
         event.preventDefault();
 
-        if (!this.uploadInProgress) {
+        if (!this.disabled) {
             this.highlight = true;
         }
     }
 
-    private DragEnter(event) {
+    public DragEnter(event) {
         event.stopPropagation();
         event.preventDefault();
 
-        if (!this.uploadInProgress) {
+        if (!this.disabled) {
             this.highlight = true;
         }
     }
 
-    private DragLeave(event) {
+    public DragLeave(event) {
         event.stopPropagation();
         event.preventDefault();
 
         this.highlight = false;
     }
 
-    private Drop(event): void {
+    public Drop(event): void {
         event.stopPropagation();
         event.preventDefault();
 
@@ -166,22 +168,17 @@ export class FileUploadComponent implements OnInit {
     }
     //#endregion Drag and Drop
 
-    private UploadFiles(evt) {
+    public UploadFiles(evt) {
         // Turn off the DragOver highlight
         this.highlight = false;
 
         // Upload already in progress? Exit
-        if (this.uploadInProgress) {
+        if (this.disabled) {
             return;
         }
 
         // Clear any previous upload warnings
         this.warnings = [];
-
-        if (!this.uploadUri || this.uploadUri == "") {
-            this.warnings.push({ message: "Upload URI is required.", unacceptedFiles: [] });
-            return;
-        }
 
         let files;
 
@@ -225,52 +222,20 @@ export class FileUploadComponent implements OnInit {
             return;
         }
 
-        // Files have been accepted
-        this.acceptedFilesSelected.emit(acceptedFiles);
-
-        // Display this list to the user
-        this.uploadingFiles = acceptedFiles;
-        this.uploadInProgress = true;
-
-        // Upload the accepted files
         const uploadData: FileUploadModel = {
-            uploadUri: this.uploadUri,
-            headers: this.uploadHeaders,
-            methodType: this.uploadMethodType,
             files: acceptedFiles,
             progress: this.progressSubject,
             readyState: this.readyStateSubject
         };
 
-        console.log(uploadData);
-
         this.beginUploadFiles.emit(uploadData);
-    }
-
-    public MonitorProgress(progress: number) {
-        // console.log("progress", progress);
-        this.progressEvent.emit(progress);
-
-        if (progress >= 100) {
-            this.uploadInProgress = false;
-        }
-    }
-
-    public MonitorResponse(xhr: XMLHttpRequest) {
-        if (!xhr) {
-            return;
-        }
-
-        if (xhr.response) {
-            this.uploadResponseEvent.emit(xhr.response);
-        }
     }
 
     public OpenFilePicker() {
         this.filePicker.nativeElement.click();
     }
 
-    private OnFileSelect(event) {
+    public OnFileSelect(event) {
         this.UploadFiles(event);
     }
 
